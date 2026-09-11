@@ -1,0 +1,27 @@
+To explain your heuristic evaluation functions clearly, emphasize that both models explicitly avoid
+ simplistic, traditional counting (such as standard piece counts or simple open-line totals). 
+ Instead, both engines evaluate board states using non-linear, multi-dimensional field metrics.
+ Key Explanations by Game1. Checkers Evaluation ModelCore Strategy: Models Territorial Dominance 
+ and Defensive Integrity rather than material weight.Direction-Aware Asymmetric Voronoi Control 
+ (VC):Treats every dark square on the board as contested territory.Measures effective reach using 
+ Chebyshev step-distance with an asymmetric penalty ($2.5\times$) for regular Men evaluating 
+ squares behind them (since they cannot move backward). Kings have equal reach in all directions 
+ ($1.0\times$).The incentive to promote pieces to Kings naturally emerges from the model (since 
+ Kings control dramatically more Voronoi territory) rather than being manually hardcoded.Structura
+ l Rigidity & Vulnerability (SR):Phalanx Support: Rewards defensive clustering (pieces with
+  adjacent diagonal allies).Backline Cohesion: Rewards maintaining home-row occupation to block
+   opponent kinging.Vulnerability & Multi-Jump Penalties: Penalizes hanging pieces and severely 
+   penalizes pieces trapped inside multi-jump capture chains.2. Tic-Tac-Toe Evaluation ModelCore 
+   Strategy: Evaluates the board as a Continuous Potential Field rather than counting static open 
+   lines.Fork Pressure Factor (FF):Measures potential multi-threat cells.Squaring $k(P, c)$ 
+   ensures that a cell intersecting two live lines contributes $4\times$ weight instead of 
+   $2\times$, modeling the non-linear, exponential tactical threat of a double-threat fork.
+   Incorporates spatial centrality weights (center cell $= 2.0$, corners $= 1.0$).Influence 
+   Density (ID):Measures line progression non-linearly using $(\text{marks} + 1)^2$. A line with 2
+    marks contributes $9\times$ weight compared to a single mark ($4\times$), capturing 
+    near-completion pressure.Opponent Denial / Entropy Term (OD):Calculates unresolved risk by 
+    penalizing positions where the opponent retains high mobility and active options near central
+     squares.Output NormalizationTanh Compression: Both evaluation functions pass the unbounded 
+     raw score through hyperbolic tangent ($\tanh$) functions ($\text{TTT\_SCALE} = 6.5$,
+      $\text{CHECKERS\_SCALE} = 18$) to map differentials into a clean $[-100, 100]$ range for the
+       visual telemetry bar while retaining exact precision internally for Minimax search.

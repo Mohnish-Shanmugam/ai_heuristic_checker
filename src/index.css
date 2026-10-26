@@ -1,9 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg-dark: #0a0d12;
-  --panel-bg: #141922;
-  --panel-border: #262c3a;
+  --bg-dark: #070707;
+  /* --bg-dark: #d56a6a; */
+  --panel-bg: #455779;
+  --panel-border: #002c93;
   --accent-gold: #f5a623;
   --text-main: #e8ebf1;
   --text-muted: #8a92a6;

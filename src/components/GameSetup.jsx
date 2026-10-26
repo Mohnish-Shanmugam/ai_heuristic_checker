@@ -66,7 +66,7 @@ export default function GameSetup({ game, onBack, onStart }) {
         <button
           onClick={() => onStart({ humanSide: side, depth })}
           className="w-full rounded-sm py-3 font-medium transition-opacity hover:opacity-90"
-          style={{ background: 'var(--signal)', color: '#1a1305' }}
+          style={{ background: 'var(--signal)', color: '#ffffff' }}
         >
           Start match
         </button>

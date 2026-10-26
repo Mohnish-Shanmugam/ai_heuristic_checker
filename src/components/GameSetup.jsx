@@ -1,76 +1,102 @@
 import { useState } from 'react';
+import { ArrowLeft, Play, Bot, User, Info } from 'lucide-react';
+import { AppHeader, SideDot } from './ui.jsx';
 
-export default function GameSetup({ game, onBack, onStart }) {
-  const [side, setSide] = useState(game.sides.first);
-  const [depth, setDepth] = useState(game.defaultDepth);
+export default function GameSetup({ game, initialConfig, onBack, onHome, onStart }) {
+  const [side, setSide] = useState(initialConfig?.humanSide ?? game.sides.first);
+  // Fall back to a listed option: the registry's defaultDepth is not always one of depthOptions.
+  const [depth, setDepth] = useState(() => {
+    const wanted = initialConfig?.depth ?? game.defaultDepth;
+    return game.depthOptions.some((o) => o.value === wanted) ? wanted : game.depthOptions[1].value;
+  });
+
+  const botSide = side === game.sides.first ? game.sides.second : game.sides.first;
+  const maxDepth = game.depthOptions[game.depthOptions.length - 1].value;
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-6 py-16" style={{ background: 'var(--void)' }}>
-      <div className="max-w-md w-full">
-        <button onClick={onBack} className="text-sm text-[var(--dim)] hover:text-[var(--ink)] mb-6">
-          ← back
+    <div className="min-h-screen">
+      <AppHeader onHome={onHome} crumbs={[game.name, 'Setup']} />
+      <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+        <button onClick={onBack} className="btn btn-ghost btn-sm -ml-2 mb-6">
+          <ArrowLeft size={15} /> All games
         </button>
-        <h1 className="text-2xl font-semibold mb-1">{game.name}</h1>
-        <p className="text-sm text-[var(--dim)] mb-8">{game.tagline}</p>
+        <div className="animate-fade-up">
+          <div className="eyebrow mb-2">Match setup</div>
+          <h1 className="text-3xl font-extrabold tracking-tight">{game.name}</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--dim)' }}>{game.tagline}</p>
+        </div>
 
-        <div className="mb-7">
-          <div className="text-sm font-medium mb-3">Play as</div>
-          <div className="grid grid-cols-2 gap-2">
+        <section className="mt-9">
+          <h2 className="mb-3 text-sm font-semibold">Play as</h2>
+          <div role="radiogroup" aria-label="Your side" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[game.sides.first, game.sides.second].map((s) => (
               <button
                 key={s}
+                role="radio"
+                aria-checked={side === s}
                 onClick={() => setSide(s)}
-                className="rounded-sm border px-4 py-3 text-sm transition-colors"
-                style={{
-                  borderColor: side === s ? game.sideColor[s] : 'var(--hairline)',
-                  background: side === s ? 'var(--panel-raised)' : 'var(--panel)',
-                  color: 'var(--ink)',
-                }}
+                className="option-card flex items-center gap-3 px-4 py-3.5"
               >
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle"
-                  style={{ background: game.sideColor[s] }}
-                />
-                {game.sideLabel[s]}
-                {s === game.sides.first && <span className="text-[var(--dim)]"> (moves first)</span>}
+                <SideDot color={game.sideColor[s]} size={16} />
+                <span className="flex flex-col">
+                  <span className="font-semibold">{game.sideLabel[s]}</span>
+                  <span className="text-xs" style={{ color: 'var(--dim)' }}>
+                    {s === game.sides.first ? 'Moves first' : 'Moves second'}
+                  </span>
+                </span>
               </button>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="mb-9">
-          <div className="text-sm font-medium mb-3">Bot difficulty</div>
-          <div className="flex flex-col gap-2">
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold">Bot difficulty <span style={{ color: 'var(--dim)' }}>(search depth)</span></h2>
+          <div role="radiogroup" aria-label="Bot difficulty" className="flex flex-col gap-2">
             {game.depthOptions.map((opt) => (
               <button
                 key={opt.value}
+                role="radio"
+                aria-checked={depth === opt.value}
                 onClick={() => setDepth(opt.value)}
-                className="rounded-sm border px-4 py-2.5 text-sm text-left transition-colors flex items-center justify-between"
-                style={{
-                  borderColor: depth === opt.value ? 'var(--signal)' : 'var(--hairline)',
-                  background: depth === opt.value ? 'var(--panel-raised)' : 'var(--panel)',
-                }}
+                className="option-card flex items-center gap-3 px-4 py-3 text-sm"
               >
-                <span>{opt.label}</span>
-                <span className="font-mono-data text-[var(--dim)] text-xs">d={opt.value}</span>
+                <span className="flex-1 font-medium">{opt.label.replace(/\s*\(depth \d+\)/, '')}</span>
+                <span className="flex h-1.5 w-24 overflow-hidden rounded-full" style={{ background: 'var(--hairline)' }}>
+                  <span
+                    className="h-full rounded-full"
+                    style={{ width: `${(opt.value / maxDepth) * 100}%`, background: depth === opt.value ? 'var(--signal)' : 'var(--faint)' }}
+                  />
+                </span>
+                <span className="font-mono-data w-10 text-right text-xs" style={{ color: 'var(--dim)' }}>d={opt.value}</span>
               </button>
             ))}
           </div>
           {depth >= 6 && (
-            <p className="text-xs text-[var(--dim)] mt-2">
-              Higher depths search more of the game tree and may take a few seconds per move.
+            <p className="mt-3 flex items-start gap-2 text-xs" style={{ color: 'var(--dim)' }}>
+              <Info size={14} className="mt-px shrink-0" />
+              Higher depths search much more of the game tree and may take a few seconds per move. Very large
+              searches are recorded only partially in the search-tree view (the panel says so when it happens).
             </p>
           )}
-        </div>
+        </section>
 
-        <button
-          onClick={() => onStart({ humanSide: side, depth })}
-          className="w-full rounded-sm py-3 font-medium transition-opacity hover:opacity-90"
-          style={{ background: 'var(--signal)', color: '#ffffff' }}
-        >
-          Start match
-        </button>
-      </div>
+        <div className="card mt-9 flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+          <div className="flex flex-1 flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+            <span className="flex items-center gap-2">
+              <User size={15} style={{ color: 'var(--dim)' }} /> You: <SideDot color={game.sideColor[side]} />
+              <b>{game.sideLabel[side]}</b>
+            </span>
+            <span className="flex items-center gap-2">
+              <Bot size={15} style={{ color: 'var(--dim)' }} /> Bot: <SideDot color={game.sideColor[botSide]} />
+              <b>{game.sideLabel[botSide]}</b>
+              <span className="font-mono-data text-xs" style={{ color: 'var(--dim)' }}>depth {depth}</span>
+            </span>
+          </div>
+          <button onClick={() => onStart({ humanSide: side, depth })} className="btn btn-primary px-6 py-3">
+            <Play size={16} /> Start match
+          </button>
+        </div>
+      </main>
     </div>
   );
 }

@@ -16,12 +16,18 @@
 // when the *first* named side (X / Player 1 / light pieces) is ahead, and
 // negative when the second side is ahead. `maximizingPlayer` tells the
 // search which side is trying to maximize `raw` at the root.
+//
+// `trace` (optional) is a passive observer (see searchTrace.js). Every
+// `trace?.…` call below only records values the search has already
+// computed; it never feeds anything back, so with or without a tracer the
+// search visits the same nodes and returns the same result.
 
-export function minimax(adapter, state, depth, alpha, beta, currentPlayer, maximizingPlayer, stats) {
+export function minimax(adapter, state, depth, alpha, beta, currentPlayer, maximizingPlayer, stats, trace) {
   stats.nodes += 1;
 
   if (depth === 0 || adapter.isTerminal(state)) {
     const evalResult = adapter.evaluate(state, maximizingPlayer);
+    trace?.leaf(evalResult.raw, evalResult, depth === 0 ? 'depth-limit' : 'terminal');
     return { value: evalResult.raw, evalResult };
   }
 
@@ -34,16 +40,19 @@ export function minimax(adapter, state, depth, alpha, beta, currentPlayer, maxim
     // this branch is unreachable since isTerminal() already catches it).
     const evalResult = adapter.evaluate(state, maximizingPlayer);
     const forcedValue = isMaximizing ? -100000 : 100000;
+    trace?.leaf(forcedValue, evalResult, 'no-moves');
     return { value: forcedValue, evalResult: { ...evalResult, raw: forcedValue, terminal: 'no-moves' } };
   }
 
   let bestValue = isMaximizing ? -Infinity : Infinity;
   let bestMove = null;
   let bestEval = null;
+  trace?.expand(moves);
 
   for (const move of moves) {
     const nextState = adapter.applyMove(state, move, currentPlayer);
     const nextPlayer = adapter.nextPlayer(currentPlayer, move, nextState);
+    trace?.enter(move, nextState, nextPlayer, depth - 1, alpha, beta);
     const { value, evalResult } = minimax(
       adapter,
       nextState,
@@ -52,14 +61,17 @@ export function minimax(adapter, state, depth, alpha, beta, currentPlayer, maxim
       beta,
       nextPlayer,
       maximizingPlayer,
-      stats
+      stats,
+      trace
     );
+    trace?.exit(value);
 
     if (isMaximizing) {
       if (value > bestValue) {
         bestValue = value;
         bestMove = move;
         bestEval = evalResult;
+        trace?.best();
       }
       alpha = Math.max(alpha, bestValue);
     } else {
@@ -67,27 +79,32 @@ export function minimax(adapter, state, depth, alpha, beta, currentPlayer, maxim
         bestValue = value;
         bestMove = move;
         bestEval = evalResult;
+        trace?.best();
       }
       beta = Math.min(beta, bestValue);
     }
 
     if (beta <= alpha) {
       stats.prunes += 1;
+      trace?.cutoff(alpha, beta);
       break; // alpha-beta cutoff
     }
   }
 
+  trace?.value(bestValue);
   return { value: bestValue, move: bestMove, evalResult: bestEval };
 }
 
 // Finds the best move for `player` at the given state, searching to `depth`.
 // Returns { move, value, evalResult, nodes, prunes, elapsedMs }.
-export function findBestMove(adapter, state, player, depth) {
+// `trace` is the optional passive observer described above.
+export function findBestMove(adapter, state, player, depth, trace) {
   const start = performance.now();
   const stats = { nodes: 0, prunes: 0 };
   const moves = adapter.getLegalMoves(state, player);
 
   if (moves.length === 0) return null;
+  trace?.root(state, player, depth, moves);
 
   let alpha = -Infinity;
   let beta = Infinity;
@@ -100,6 +117,7 @@ export function findBestMove(adapter, state, player, depth) {
   for (const move of moves) {
     const nextState = adapter.applyMove(state, move, player);
     const nextPlayer = adapter.nextPlayer(player, move, nextState);
+    trace?.enter(move, nextState, nextPlayer, depth - 1, alpha, beta);
     const { value, evalResult } = minimax(
       adapter,
       nextState,
@@ -108,17 +126,21 @@ export function findBestMove(adapter, state, player, depth) {
       beta,
       nextPlayer,
       player,
-      stats
+      stats,
+      trace
     );
+    trace?.exit(value);
     moveScores.push({ move, value, evalResult });
 
     if (value > bestValue) {
       bestValue = value;
       bestMove = move;
       bestEval = evalResult;
+      trace?.best();
     }
     alpha = Math.max(alpha, bestValue);
   }
+  trace?.value(bestValue);
 
   moveScores.sort((a, b) => b.value - a.value);
 

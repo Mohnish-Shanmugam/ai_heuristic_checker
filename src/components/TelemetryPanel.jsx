@@ -1,17 +1,20 @@
+import { Activity, Info } from 'lucide-react';
+import { Card, SideDot } from './ui.jsx';
+
 function fmt(n) {
   if (n === undefined || n === null) return '—';
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
 }
 
-export default function TelemetryPanel({ game, breakdown, currentPlayer }) {
+export default function TelemetryPanel({ game, breakdown, currentPlayer, title = 'Heuristic telemetry', compact = false }) {
   if (!breakdown) {
     return (
-      <div
-        className="rounded-sm border p-4 text-sm text-[var(--dim)]"
-        style={{ borderColor: 'var(--hairline)', background: 'var(--panel)' }}
-      >
-        Game over — no further telemetry.
-      </div>
+      <Card title={title} icon={Activity}>
+        <div className="flex items-start gap-2 p-4 text-sm" style={{ color: 'var(--dim)' }}>
+          <Info size={15} className="mt-0.5 shrink-0" />
+          Terminal position — the evaluator returns a fixed win/draw score here, so there is no term breakdown.
+        </div>
+      </Card>
     );
   }
 
@@ -19,45 +22,59 @@ export default function TelemetryPanel({ game, breakdown, currentPlayer }) {
   const secondKey = game.sides.second;
 
   return (
-    <div className="rounded-sm border" style={{ borderColor: 'var(--hairline)', background: 'var(--panel)' }}>
-      <div
-        className="px-4 py-2.5 border-b flex items-center justify-between"
-        style={{ borderColor: 'var(--hairline)' }}
-      >
-        <span className="text-sm font-medium">Heuristic telemetry</span>
-        <span className="text-[11px] font-mono-data text-[var(--dim)]">
-          to move: <span style={{ color: game.sideColor[currentPlayer] }}>{game.sideLabel[currentPlayer]}</span>
-        </span>
-      </div>
-      <div className="p-4">
-        <table className="w-full text-sm">
+    <Card
+      title={title}
+      icon={Activity}
+      actions={
+        currentPlayer && (
+          <span className="chip">
+            to move <SideDot color={game.sideColor[currentPlayer]} size={8} /> {game.sideLabel[currentPlayer]}
+          </span>
+        )
+      }
+    >
+      <div className="px-4 pb-3 pt-3">
+        <table className="data-table">
           <thead>
-            <tr className="text-left text-[11px] text-[var(--dim)]">
-              <th className="font-normal pb-2">Term</th>
-              <th className="font-normal pb-2 text-right font-mono-data" style={{ color: game.sideColor[firstKey] }}>
-                {game.sideLabel[firstKey]}
+            <tr>
+              <th>Term</th>
+              <th className="text-right" style={{ textAlign: 'right' }}>
+                <span className="inline-flex items-center gap-1.5"><SideDot color={game.sideColor[firstKey]} size={8} />{game.sideLabel[firstKey]}</span>
               </th>
-              <th className="font-normal pb-2 text-right font-mono-data" style={{ color: game.sideColor[secondKey] }}>
-                {game.sideLabel[secondKey]}
+              <th className="text-right" style={{ textAlign: 'right' }}>
+                <span className="inline-flex items-center gap-1.5"><SideDot color={game.sideColor[secondKey]} size={8} />{game.sideLabel[secondKey]}</span>
               </th>
             </tr>
           </thead>
           <tbody>
-            {game.telemetryFields.map((field) => (
-              <tr key={field.key} className="border-t" style={{ borderColor: 'var(--hairline)' }} title={field.hint}>
-                <td className="py-2 pr-2 text-[var(--ink)]">
-                  {field.label}
-                  <div className="text-[10px] text-[var(--dim)] font-normal leading-tight mt-0.5 max-w-[220px]">
-                    {field.hint}
-                  </div>
-                </td>
-                <td className="py-2 text-right font-mono-data">{fmt(breakdown[firstKey]?.[field.key])}</td>
-                <td className="py-2 text-right font-mono-data">{fmt(breakdown[secondKey]?.[field.key])}</td>
-              </tr>
-            ))}
+            {game.telemetryFields.map((field) => {
+              const a = breakdown[firstKey]?.[field.key];
+              const b = breakdown[secondKey]?.[field.key];
+              const subtracted = /subtracted/i.test(field.label);
+              const aLeads = typeof a === 'number' && typeof b === 'number' && (subtracted ? a < b : a > b);
+              const bLeads = typeof a === 'number' && typeof b === 'number' && (subtracted ? b < a : b > a);
+              return (
+                <tr key={field.key} title={field.hint}>
+                  <td className="pr-2">
+                    <div className="text-[13px]">{field.label}</div>
+                    {!compact && (
+                      <div className="mt-0.5 max-w-[240px] text-[10.5px] leading-snug" style={{ color: 'var(--faint)' }}>
+                        {field.hint}
+                      </div>
+                    )}
+                  </td>
+                  <td className="font-mono-data text-right" style={{ color: aLeads ? 'var(--ink)' : 'var(--dim)', fontWeight: aLeads ? 600 : 400 }}>
+                    {fmt(a)}
+                  </td>
+                  <td className="font-mono-data text-right" style={{ color: bLeads ? 'var(--ink)' : 'var(--dim)', fontWeight: bLeads ? 600 : 400 }}>
+                    {fmt(b)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-    </div>
+    </Card>
   );
 }
